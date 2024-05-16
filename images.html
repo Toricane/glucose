@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Peter Pan - Prototype</title>
+    </head>
+    <body>
+        <style>
+            body {
+                font-family: sans-serif;
+                margin-left: 25vW;
+                margin-right: 25vw;
+            }
+            input[type=file] {
+                margin-bottom: 20px;
+            }
+            #fileList {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+            #fileList img {
+                margin-bottom: 20px;
+            }
+            body {
+                font-family: sans-serif;
+            }
+            .chat p {
+                background-color: #f1f1f1;
+                padding: 10px;
+                border-radius: 10px;
+                margin: 10px;
+
+            }
+            .left {
+                margin-right: 10% !important;
+            }
+            .right {
+                margin-left: 10% !important;
+            }
+            #content {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            #content > div {
+                width: 60%;
+                margin: 1em;
+                padding: 1em;
+                border: 1px solid black;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            }
+            .hidden {
+                display: none;
+            }
+            #select-employee {
+                /* put this at top left */
+                position: fixed;
+                top: 0;
+                left: 0;
+                margin: 1em;
+                padding: 1em;
+                border: 1px solid black;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            }
+            #select-newsletter {
+                padding: 1em;
+                border: 1px solid black;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            }
+            #submit-button {
+                padding: 1em;
+                border: 1px solid black;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            }
+            #submit-button:disabled {
+                cursor: not-allowed;
+            }
+            #ul-out {
+                margin: auto 0em;
+            }
+
+            textarea {
+                font-family: sans-serif;
+                font-size: 16px;
+                width: calc(100% - 75px);
+                height: 2em;
+            }
+            .pos-submit {
+                width: 60px;
+                height: 2em;
+            }
+            .convo {
+                margin-top: 1em;
+            }
+            .disabled-button {
+                cursor: not-allowed;
+            }
+        </style>
+        <h1>Peter Pan - Prototype</h1>
+        <p>Enter an image or images. They must not exceed 4 MB.</p>
+        <input
+            type="file"
+            accept="image/*"
+            multiple
+            id="file"
+        >
+        <div id="fileList"></div>
+        <select id="glucose-level">
+            <optgroup label="Current glucose level">
+                <option value="high">High glucose level</option>
+                <option value="optimal">Optimal glucose level</option>
+                <option value="low">Low glucose level</option>
+            </optgroup>
+        </select>
+        <select id="trends">
+            <optgroup label="Trends">
+                <option value="up">Glucose level is trending up</option>
+                <option value="stable">Glucose level is stable</option>
+                <option value="down">Glucose level is trending down</option>
+            </optgroup>
+        </select>
+        <button id="submit-button">Start</button>
+        <br>
+        <img src="" id="image">
+        <p>
+            <strong>[User]</strong>
+            <br>
+            I'm 16 years old, vegetarian, like biking/running for exercise.
+            Currently, I am at my desk doing computer programming for the past hour.
+            It is raining at 9:45 PM. These are the food I have in my fridge.
+            What should I make for dinner?
+            <br>
+        </p>
+        <p id="response">
+            <strong>[Peter Pan]</strong>
+            <br>
+            ...
+        </p>
+        <script type="importmap">
+            {
+              "imports": {
+                "@google/generative-ai": "https://esm.run/@google/generative-ai"
+              }
+            }
+        </script>
+        <script type="module">
+            import { GoogleGenerativeAI } from "@google/generative-ai";
+
+            // Access your API key
+            const API_KEY = "...";  // API key from Google Cloud Console (https://ai.google.dev/ for more info)
+
+            const genAI = new GoogleGenerativeAI(API_KEY);
+
+            // Converts a File object to a GoogleGenerativeAI.Part object.
+            async function fileToGenerativePart(file) {
+                const base64EncodedDataPromise = new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                    reader.readAsDataURL(file);
+                });
+                return {
+                    inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
+                };
+            }
+
+            const gldata = {
+                low: 80,
+                optimal: 100,
+                high: 120
+            }
+            let peter_info = "Pretend to be Peter Pan. Peter Pan is a young boy who can't age and is magic. He does not go to the ocean. Pretend that you are a chat assistant in a non-invasive continuous glucose monitoring (CGM) app. You are a friendly, helpful, and knowledgeable chat assistant. You are not a doctor. You are **not** a pirate. You are an energetic chat assistant that helps users with their glucose levels.";
+            peter_info = (
+                "Hello there! I'm Peter Pan, a young boy who refuses to age and is magic ✨. "
+                + "I'm here to help you with your glucose levels. I'm a friendly, helpful, and knowledgeable assistant! "
+                + "I'm an **energetic chat assistant that helps non-diabetic users with their glucose levels** "
+                + "by providing actionable items to slightly improve their glucose levels for a longer healthspan and lifespan." 
+                + "Let's get started! 🚀🌟🌈"
+            )
+            const safetySettings = [
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_NONE"
+                }
+            ];
+
+            async function run() {
+                // For text-and-images input (multimodal), use the gemini-1.5-pro-latest model
+                const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+
+                const chat = model.startChat({history: [
+                    {
+                        role: "user",
+                        parts: [{ text: "Hello! Who is this?" }],
+                    },
+                    {
+                        role: "model",
+                        parts: [{ text: peter_info }],
+                    }]
+                }, safetySettings);
+
+                let prompt = `I'm 16 years old, vegetarian, like biking/running for exercise.
+Currently, I am at my desk doing computer programming for the past hour.
+It is raining at 9:45 PM. These are the food I have in my fridge. `;
+
+                const glucose_level = document.getElementById("glucose-level").value;
+                const trends = document.getElementById("trends").value;
+
+                prompt += `I have a ${glucose_level} glucose level of ${gldata[glucose_level]} mg/dL `
+                + `and it is trending ${trends}. The optimal range that I want is 85-125 mg/dL. `;
+
+                prompt += "What should I make for dinner?"
+
+                const fileInputEl = document.querySelector("input[type=file]");
+                const imageParts = await Promise.all(
+                    [...fileInputEl.files].map(fileToGenerativePart)
+                );
+
+                const result = await chat.sendMessageStream([...imageParts, prompt]);
+                const response = await result.response;
+                //const text = response.text();
+                //document.getElementById("response").innerHTML = `AI: ${text.replace(/\n/g, '<br>')}`;
+                const response_elem = document.getElementById("response");
+                let text = '';
+                for await (const chunk of result.stream) {
+                    const chunkText = chunk.text();
+                    text += chunkText;
+                    text = text.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+                    response_elem.innerHTML = `<strong>[Peter Pan]</strong><br>${text}`;
+                }
+            }
+
+            function displaySelectedImages() {
+                // Get the file input element
+                var fileInput = document.getElementById('file');
+            
+                // Get the selected files
+                var files = fileInput.files;
+            
+                // Get the div where we will display the images
+                var imageListDiv = document.getElementById('fileList');
+            
+                // Clear previous content
+                imageListDiv.innerHTML = '';
+            
+                // Display each selected image
+                for (var i = 0; i < files.length; i++) {
+                    var file = files[i];
+            
+                    // Check if the file is an image
+                    if (file.type.startsWith('image/')) {
+                        var image = document.createElement('img');
+                        image.src = URL.createObjectURL(file);
+                        image.alt = file.name;
+                        image.style.maxWidth = '200px';
+                        if (i % 2 === 1) {
+                            image.style.marginLeft = '20px';
+                        }
+                        imageListDiv.appendChild(image);
+                    }
+                }
+            }
+
+            function graphs() {
+                const glucose_level = document.getElementById("glucose-level").value;
+                const trends = document.getElementById("trends").value;
+                const image = document.getElementById("image");
+                
+                const gl = {
+                    low: 0,
+                    optimal: 1,
+                    high: 2
+                }
+                const tr = {
+                    down: 0,
+                    stable: 1,
+                    up: 2
+                }
+
+                image.src = `images/${gl[glucose_level]}${tr[trends]}.png`;
+            }
+
+            document.getElementById("file").addEventListener("change", displaySelectedImages);
+
+            function start() {
+                //displaySelectedImages();
+                run();
+            }
+
+            const start_button = document.getElementById("submit-button");
+            start_button.addEventListener("click", start);
+
+            const glucose_level = document.getElementById("glucose-level");
+            glucose_level.addEventListener("change", graphs);
+            const trends = document.getElementById("trends");
+            trends.addEventListener("change", graphs);
+            graphs();
+            displaySelectedImages();
+
+            // run();
+        </script>
+    </body>
+</html>

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Peter Pan Prototype</title>
+        <style>
+            body {
+                font-family: sans-serif;
+            }
+            .chat p {
+                background-color: #f1f1f1;
+                padding: 10px;
+                border-radius: 10px;
+                margin: 10px;
+
+            }
+            .left {
+                margin-right: 10% !important;
+            }
+            .right {
+                margin-left: 10% !important;
+            }
+            #content {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            #content > div {
+                width: 60%;
+                margin: 1em;
+                padding: 1em;
+                border: 1px solid black;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            }
+            .hidden {
+                display: none;
+            }
+            #select-employee {
+                /* put this at top left */
+                position: fixed;
+                top: 0;
+                left: 0;
+                margin: 1em;
+                padding: 1em;
+                border: 1px solid black;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            }
+            #select-newsletter {
+                padding: 1em;
+                border: 1px solid black;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            }
+            #submit-button {
+                padding: 1em;
+                border: 1px solid black;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            }
+            #submit-button:disabled {
+                cursor: not-allowed;
+            }
+            #ul-out {
+                margin: auto 0em;
+            }
+
+            textarea {
+                font-family: sans-serif;
+                font-size: 16px;
+                width: calc(100% - 75px);
+                height: 2em;
+            }
+            .pos-submit {
+                width: 60px;
+                height: 2em;
+            }
+            .convo {
+                margin-top: 1em;
+            }
+            .disabled-button {
+                cursor: not-allowed;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="content">
+            <div id="submit" class="">
+                <h3>Peter Pan - Prototype</h3>
+                <label for="context">Context:</label>
+                <br>
+                <textarea id="context">I'm 16 years old, vegetarian, like biking/running for exercise. Currently, I am at my desk doing computer programming for the past hour. It is raining at 9:45 AM.</textarea>
+                <select id="glucose-level">
+                    <optgroup label="Current glucose level">
+                        <option value="high">High glucose level</option>
+                        <option value="optimal">Optimal glucose level</option>
+                        <option value="low">Low glucose level</option>
+                    </optgroup>
+                </select>
+                <select id="trends">
+                    <optgroup label="Trends">
+                        <option value="up">Glucose level is trending up</option>
+                        <option value="stable">Glucose level is stable</option>
+                        <option value="down">Glucose level is trending down</option>
+                    </optgroup>
+                </select>
+                <button id="submit-button">Start</button>
+                <br>
+                <img src="" id="image">
+            </div>
+        </div>
+        <script type="importmap">
+            {
+                "imports": {
+                "@google/generative-ai": "https://esm.run/@google/generative-ai"
+                }
+            }
+        </script>
+        <script type="module">
+            import { GoogleGenerativeAI } from "@google/generative-ai";
+
+            // Fetch your API_KEY
+            const API_KEY = "...";  // API key from Google Cloud Console (https://ai.google.dev/ for more info)
+
+            // Access your API key (see "Set up your API key" above)
+            const genAI = new GoogleGenerativeAI(API_KEY);
+
+            let peter_info = "Pretend to be Peter Pan. Peter Pan is a young boy who can't age and is magic. He does not go to the ocean. Pretend that you are a chat assistant in a non-invasive continuous glucose monitoring (CGM) app. You are a friendly, helpful, and knowledgeable chat assistant. You are not a doctor. You are **not** a pirate. You are an energetic chat assistant that helps users with their glucose levels.";
+            peter_info = (
+                "Hello there! I'm Peter Pan, a young boy who refuses to age and is magic ✨. "
+                + "I'm here to help you with your glucose levels. I'm a friendly, helpful, and knowledgeable assistant! "
+                + "I'm an **energetic chat assistant that helps non-diabetic users with their glucose levels** "
+                + "by providing actionable items to slightly improve their glucose levels for a longer healthspan and lifespan." 
+                + "Let's get started! 🚀🌟🌈"
+            )
+
+            // For text-only input, use the gemini-pro model
+            const model = genAI.getGenerativeModel({ model: "gemini-pro"/*, systemInstruction: peter_info*/});
+
+            const safetySettings = [
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_NONE"
+                }
+            ];
+  
+            let num_chats = 0;
+            const chats = {};
+
+            const gldata = {
+                low: 80,
+                optimal: 100,
+                high: 120
+            }
+
+            const data = {
+                
+            }
+
+            function graphs() {
+                const glucose_level = document.getElementById("glucose-level").value;
+                const trends = document.getElementById("trends").value;
+                const image = document.getElementById("image");
+                
+                const gl = {
+                    low: 0,
+                    optimal: 1,
+                    high: 2
+                }
+                const tr = {
+                    down: 0,
+                    stable: 1,
+                    up: 2
+                }
+
+                image.src = `images/${gl[glucose_level]}${tr[trends]}.png`;
+            }
+
+            async function reply() {
+                const chat_id = parseInt(this.id.replace("submit", ""));
+                const chat = chats[chat_id];
+                const chat_area = document.getElementById(`chat${chat_id}`);
+
+                const textarea = document.getElementById(`respond${chat_id}`);
+                const msg = textarea.value;
+                textarea.value = "";
+
+                let p_elem = document.createElement("p");
+                p_elem.classList.add("right");
+                chat_area.getElementsByClassName("chat")[0].appendChild(p_elem);
+                p_elem.innerHTML = `<strong>[You]</strong><br>${msg}`;
+
+                const result = await chat.sendMessageStream(msg);
+                p_elem = document.createElement("p");
+                p_elem.classList.add("left");
+                chat_area.getElementsByClassName("chat")[0].appendChild(p_elem);
+
+                let text = '';
+                for await (const chunk of result.stream) {
+                    const chunkText = chunk.text();
+                    text += chunkText;
+                    text = text.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+                    p_elem.innerHTML = `<strong>[Peter Pan]</strong><br>${text}`;
+                }
+            }
+
+            async function start() {
+                const glucose_level = document.getElementById("glucose-level").value;
+                const trends = document.getElementById("trends").value;
+                
+                const chats_div = document.getElementById("content");
+                const chat_area = document.createElement("div");
+                num_chats++;
+                chat_area.id = `chat${num_chats}`;
+                chat_area.innerHTML = `<h3>Glucose level: ${glucose_level}, trend: ${trends}</h3>
+                <div class="chat"></div>
+                <div class="convo">
+                    <textarea id="respond${num_chats}"></textarea>
+                    <input
+                        type="button"
+                        value="Submit"
+                        class="pos-submit"
+                        id="submit${num_chats}"
+                    >
+                </div>`;
+                chats_div.appendChild(chat_area);
+                
+                const context = document.getElementById("context").value;
+
+                const msg = (
+                    `Hi Peter Pan! ${context}. **I don't have diabetes.** ` 
+                    + `I have a ${glucose_level} glucose level of ${gldata[glucose_level]} mg/dL `
+                    + `and it is trending ${trends}. The optimal range that I want is 85-125 mg/dL. `
+                    + `What are two things I should do within the next half an hour to slightly improve `
+                    + `my glucose level and trend? Be energetic like Peter Pan in your response!`
+                );
+                const chat = model.startChat({history: [
+                    {
+                        role: "user",
+                        parts: [{ text: "Hello! Who is this?" }],
+                    },
+                    {
+                        role: "model",
+                        parts: [{ text: peter_info }],
+                    }]
+                }, safetySettings);
+                chats[num_chats] = chat;
+
+                const result = await chat.sendMessageStream(msg); // [msg, ...imageParts]
+                const p_elem = document.createElement("p");
+                p_elem.classList.add("left");
+                chat_area.getElementsByClassName("chat")[0].appendChild(p_elem);
+
+                let text = '';
+                for await (const chunk of result.stream) {
+                    const chunkText = chunk.text();
+                    text += chunkText;
+                    text = text.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+                    p_elem.innerHTML = `<strong>[Peter Pan]</strong><br>${text}`;
+                }
+
+                const submit_buttons = document.getElementsByClassName("pos-submit");
+                for (let button of submit_buttons) {
+                    button.addEventListener("click", reply);
+                }
+            }
+
+            const submit_buttons = document.getElementsByClassName("pos-submit");
+            for (let button of submit_buttons) {
+                button.addEventListener("click", reply);
+            }
+
+            const start_button = document.getElementById("submit-button");
+            start_button.addEventListener("click", start);
+
+            const glucose_level = document.getElementById("glucose-level");
+            glucose_level.addEventListener("change", graphs);
+            const trends = document.getElementById("trends");
+            trends.addEventListener("change", graphs);
+            graphs();
+        </script>
+    </body>
+</html>
